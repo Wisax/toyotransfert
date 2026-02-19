@@ -148,6 +148,62 @@ function renderFiles() {
 }
 
 /* ══════════════════════════════════════════
+   NETTOYAGE AUTO 24H
+══════════════════════════════════════════ */
+
+/**
+ * Supprime les fichiers Supabase des transferts de plus de 24h
+ */
+async function cleanupOldTransfers() {
+  const now = Date.now();
+  const maxAge = 24 * 60 * 60 * 1000; // 24h en ms
+
+  const toDelete = transfers.filter(t => {
+    const age = now - (t.timestamp || 0);
+    return age > maxAge;
+  });
+
+  for (const t of toDelete) {
+    // Lister et supprimer les fichiers du dossier
+    try {
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/list/${BUCKET}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_ANON}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ limit: 100, offset: 0, prefix: `${t.id}/` })
+      });
+
+      if (res.ok) {
+        const files = await res.json();
+        const paths = (Array.isArray(files) ? files : []).map(f => `${t.id}/${f.name}`);
+
+        if (paths.length > 0) {
+          await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_ANON}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ prefixes: paths })
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Cleanup error for', t.id, e);
+    }
+  }
+
+  // Mettre à jour l'historique local
+  transfers = transfers.filter(t => {
+    const age = now - (t.timestamp || 0);
+    return age <= maxAge;
+  });
+  localStorage.setItem('toyo_transfers', JSON.stringify(transfers));
+}
+
+/* ══════════════════════════════════════════
    SEND / UPLOAD RÉEL
 ══════════════════════════════════════════ */
 
@@ -176,6 +232,9 @@ async function sendFiles() {
   const code      = generateCode();
   const fileUrls  = [];
   const total     = selectedFiles.length;
+
+  // Nettoyer les vieux transferts (+24h)
+  cleanupOldTransfers();
 
   try {
     for (let i = 0; i < total; i++) {
@@ -215,17 +274,18 @@ async function finishTransfer(code, sender, email, msg, fileUrls) {
 
   // Sauvegarder dans l'historique
   const transfer = {
-    id      : code,
+    id        : code,
     link,
     sender,
     email,
-    message : msg,
-    files   : fileNames,
+    message   : msg,
+    files     : fileNames,
     fileUrls,
-    size    : formatSize(totalSize),
-    count   : selectedFiles.length,
-    date    : new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
-    time    : new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+    size      : formatSize(totalSize),
+    count     : selectedFiles.length,
+    timestamp : Date.now(),
+    date      : new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
+    time      : new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   };
 
   transfers.unshift(transfer);
