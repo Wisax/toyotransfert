@@ -24,7 +24,9 @@ const EMAILJS_KEY      = 'WU9tc-nJfRiqigcPN';
  * @returns {Promise<string>} URL publique du fichier
  */
 async function uploadToSupabase(folder, file) {
-  const path = `${folder}/${file.name}`;
+  // Nettoyer le nom de fichier (supprimer espaces et caractères spéciaux)
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `${folder}/${safeName}`;
   const res  = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
     method  : 'POST',
     headers : {
