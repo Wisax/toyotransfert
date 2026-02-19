@@ -10,6 +10,13 @@ const SUPABASE_URL    = 'https://cmaidtfztwhmlkcshhpu.supabase.co';
 const SUPABASE_ANON   = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtYWlkdGZ6dHdobWxrY3NoaHB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MTA4NjMsImV4cCI6MjA4NzA4Njg2M30.tnGa1pLIfkvxrApi2nOgKdBCAryqDSigKVTbMp2O1Jw';
 const BUCKET          = 'TOYOTRANSFERT';
 
+/* ══════════════════════════════════════════
+   EMAILJS CONFIG
+══════════════════════════════════════════ */
+const EMAILJS_SERVICE  = 'service_l18cbua';
+const EMAILJS_TEMPLATE = 'template_5gemqfk';
+const EMAILJS_KEY      = 'WU9tc-nJfRiqigcPN';
+
 /**
  * Upload un fichier dans Supabase Storage
  * @param {string} folder  - code unique du transfert
@@ -231,6 +238,22 @@ async function finishTransfer(code, sender, email, msg, fileUrls) {
     successSub.innerHTML = `Lien envoyé à <strong>${escapeHtml(email)}</strong> et disponible ci-dessous.`;
   } else {
     successSub.textContent = 'Partage ce lien pour permettre le téléchargement.';
+  }
+
+  // Envoyer l'email si destinataire renseigné
+  if (email) {
+    try {
+      await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+        to_email : email,
+        sender   : sender,
+        message  : msg || 'Aucun message',
+        link     : link,
+        files    : fileNames.join(', ')
+      }, EMAILJS_KEY);
+    } catch (e) {
+      console.error('EmailJS error:', e);
+      showToast('Email non envoyé, mais le lien est prêt');
+    }
   }
 
   openSuccess();
