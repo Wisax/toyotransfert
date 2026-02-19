@@ -94,7 +94,7 @@ async function init() {
 
     const fileUrls = realFiles.map(f => ({
       name: f.name,
-      url : `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${code}/${f.name}`
+      url : `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${code}/${f.name}?download=${encodeURIComponent(f.name)}`
     }));
 
     renderFiles(sender, msg, fileUrls);
