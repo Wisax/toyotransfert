@@ -199,14 +199,10 @@ async function finishTransfer(code, sender, email, msg, fileUrls) {
   const totalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
   const fileNames = selectedFiles.map(f => f.name);
 
-  // Construire la page de téléchargement et l'uploader
-  const downloadPage = buildDownloadPage(code, sender, msg, fileUrls);
-  const pageBlob     = new Blob([downloadPage], { type: 'text/html' });
-  const pageFile     = new File([pageBlob], 'index.html', { type: 'text/html' });
-
-  await uploadToSupabase(code, pageFile);
-
-  const link = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${code}/index.html`;
+  // Générer le lien vers la page de téléchargement sur Vercel
+  const params = new URLSearchParams({ code, sender });
+  if (msg) params.set('msg', msg);
+  const link = `https://toyotransfertrue.vercel.app/download.html?${params.toString()}`;
 
   // Sauvegarder dans l'historique
   const transfer = {
