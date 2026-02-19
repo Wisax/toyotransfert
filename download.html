@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOYO · Téléchargement</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0a0a0a;color:#f0ede8;font-family:'DM Sans',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem}
+  .card{background:#111;border:1px solid #1e1e1e;border-radius:16px;padding:2.5rem;max-width:520px;width:100%}
+  .logo{font-size:1.1rem;letter-spacing:.2em;color:#888;margin-bottom:2rem}
+  .logo span{color:#c8b8a2}
+  h1{font-size:1.6rem;margin-bottom:.4rem}
+  .from{color:#888;font-size:.9rem;margin-bottom:.3rem}
+  .msg{background:#1a1a1a;border-radius:8px;padding:1rem;margin:1rem 0;font-size:.9rem;color:#c8b8a2;font-style:italic}
+  .files{display:flex;flex-direction:column;gap:.6rem;margin-top:1.5rem}
+  .file-row{display:flex;justify-content:space-between;align-items:center;background:#1a1a1a;border:1px solid #222;border-radius:10px;padding:.9rem 1.2rem;text-decoration:none;color:#f0ede8;transition:border-color .2s;cursor:pointer}
+  .file-row:hover{border-color:#c8b8a2}
+  .fname{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%}
+  .dl{font-size:.8rem;color:#c8b8a2;white-space:nowrap}
+  .status{text-align:center;padding:2rem;color:#888}
+  .spinner{width:32px;height:32px;border:2px solid #222;border-top-color:#c8b8a2;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .badge{display:inline-block;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:.2rem .6rem;font-size:.75rem;color:#888;margin-bottom:1.5rem}
+  .dl-all{display:block;width:100%;margin-top:1.5rem;padding:1rem;background:#c8b8a2;color:#0a0a0a;border:none;border-radius:10px;font-size:.95rem;font-weight:500;cursor:pointer;text-align:center;transition:opacity .2s}
+  .dl-all:hover{opacity:.85}
+  .footer{margin-top:2rem;font-size:.75rem;color:#444;text-align:center}
+  .error{color:#ff6b6b;text-align:center;padding:1rem}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">TOY<span>O</span> · Transfer</div>
+  <div id="content">
+    <div class="status">
+      <div class="spinner"></div>
+      Chargement du transfert...
+    </div>
+  </div>
+</div>
+<div class="footer">TOYO Transfer · Team Créa</div>
+
+<script>
+const SUPABASE_URL = 'https://cmaidtfztwhmlkcshhpu.supabase.co';
+const ANON_KEY     = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNtYWlkdGZ6dHdobWxrY3NoaHB1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1MTA4NjMsImV4cCI6MjA4NzA4Njg2M30.tnGa1pLIfkvxrApi2nOgKdBCAryqDSigKVTbMp2O1Jw';
+const BUCKET       = 'TOYOTRANSFERT';
+
+async function init() {
+  const params = new URLSearchParams(window.location.search);
+  const code   = params.get('code');
+  const sender = params.get('sender') || 'Team Créa';
+  const msg    = params.get('msg') || '';
+
+  if (!code) {
+    showError('Lien invalide ou expiré.');
+    return;
+  }
+
+  // Lister les fichiers du dossier
+  const res = await fetch(
+    `${SUPABASE_URL}/storage/v1/object/list/${BUCKET}/${code}`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${ANON_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ limit: 100, offset: 0, prefix: '' })
+    }
+  );
+
+  if (!res.ok) {
+    showError('Impossible de charger les fichiers. Lien peut-être expiré.');
+    return;
+  }
+
+  const files = await res.json();
+
+  // Filtrer index.html si présent (ancien système)
+  const realFiles = files.filter(f => f.name !== 'index.html');
+
+  if (!realFiles.length) {
+    showError('Aucun fichier trouvé pour ce transfert.');
+    return;
+  }
+
+  // Construire les URLs
+  const fileUrls = realFiles.map(f => ({
+    name: f.name,
+    url : `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${code}/${f.name}`
+  }));
+
+  // Afficher la page
+  renderFiles(code, sender, msg, fileUrls);
+
+  // Auto-téléchargement avec délai entre chaque fichier
+  autoDownload(fileUrls);
+}
+
+function renderFiles(code, sender, msg, fileUrls) {
+  const filesHtml = fileUrls.map(f => `
+    <a class="file-row" href="${f.url}" download="${escapeHtml(f.name)}">
+      <span class="fname">${escapeHtml(f.name)}</span>
+      <span class="dl">Télécharger ↓</span>
+    </a>`).join('');
+
+  document.getElementById('content').innerHTML = `
+    <div class="badge">${fileUrls.length} fichier${fileUrls.length > 1 ? 's' : ''}</div>
+    <h1>Tes fichiers sont prêts</h1>
+    <div class="from">Envoyé par <strong>${escapeHtml(sender)}</strong></div>
+    ${msg ? `<div class="msg">"${escapeHtml(msg)}"</div>` : ''}
+    <div class="files">${filesHtml}</div>
+    <button class="dl-all" onclick="downloadAll()">↓ Tout télécharger</button>
+  `;
+}
+
+function autoDownload(fileUrls) {
+  // Lance le téléchargement automatique de chaque fichier
+  fileUrls.forEach((f, i) => {
+    setTimeout(() => {
+      const a = document.createElement('a');
+      a.href     = f.url;
+      a.download = f.name;
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }, i * 800); // 800ms entre chaque pour éviter le blocage navigateur
+  });
+}
+
+function downloadAll() {
+  const links = document.querySelectorAll('.file-row');
+  links.forEach((a, i) => {
+    setTimeout(() => {
+      const dl = document.createElement('a');
+      dl.href     = a.href;
+      dl.download = a.querySelector('.fname').textContent;
+      dl.style.display = 'none';
+      document.body.appendChild(dl);
+      dl.click();
+      document.body.removeChild(dl);
+    }, i * 800);
+  });
+}
+
+function showError(msg) {
+  document.getElementById('content').innerHTML = `<div class="error">⚠ ${msg}</div>`;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(str));
+  return d.innerHTML;
+}
+
+init();
+</script>
+</body>
+</html>
