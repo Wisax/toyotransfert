@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TOYO — Transfer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <span class="logo-text">TOYO</span>
+      <span class="logo-kanji">豊 — Transfer</span>
+    </div>
+    <div class="header-tag">Team Créa · Partage de fichiers</div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">
+        <div class="hero-eyebrow-line"></div>
+        <span class="hero-eyebrow-text">Transfert sécurisé</span>
+      </div>
+      <h1>Envoie.<br><em>Partage.</em><br>Crée.</h1>
+      <p class="hero-sub">Le hub de transfert de la Team Créa. Dépose tes fichiers, génère un lien, envoie à qui tu veux. Simple, rapide, sans limite.</p>
+    </div>
+
+    <!-- UPLOAD PANEL -->
+    <div class="upload-panel">
+
+      <!-- DROP ZONE -->
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" multiple>
+        <div class="drop-icon">↑</div>
+        <div class="drop-title">Glisse tes fichiers ici</div>
+        <div class="drop-sub">ou <span id="browseBtn">parcourir</span> · Tous formats · Pas de limite</div>
+      </div>
+
+      <!-- FILES LIST -->
+      <div class="files-list" id="filesList"></div>
+
+      <!-- FORM -->
+      <div class="form-section">
+        <div class="input-row">
+          <div class="input-group">
+            <label class="input-label">De</label>
+            <input type="text" class="input-field" id="senderName" placeholder="Ton prénom">
+          </div>
+          <div class="input-group">
+            <label class="input-label">Email destinataire</label>
+            <input type="email" class="input-field" id="recipientEmail" placeholder="optionnel">
+          </div>
+        </div>
+        <div class="input-group">
+          <label class="input-label">Message</label>
+          <input type="text" class="input-field" id="message" placeholder="Un message pour le destinataire...">
+        </div>
+
+        <!-- PROGRESS -->
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-label">
+            <span id="progressText">Préparation...</span>
+            <span id="progressPct">0%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
+
+        <button class="send-btn" id="sendBtn">
+          <span>Générer le lien de transfert</span>
+          <span>→</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES STRIP -->
+  <div class="features">
+    <div class="feature-item">
+      <div class="feature-num">01 — 送信</div>
+      <div class="feature-title">Glisser & déposer</div>
+      <div class="feature-desc">Dépose n'importe quel type de fichier. Images, vidéos, PDF, archives — tout est accepté.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-num">02 — リンク</div>
+      <div class="feature-title">Lien instantané</div>
+      <div class="feature-desc">Un lien de téléchargement généré en un clic. Partage-le à qui tu veux, quand tu veux.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-num">03 — メール</div>
+      <div class="feature-title">Envoi par email</div>
+      <div class="feature-desc">Entre l'email du destinataire pour un envoi direct. Avec un message personnalisé.</div>
+    </div>
+  </div>
+
+  <!-- RECENT TRANSFERS -->
+  <section class="recent-section">
+    <div class="section-header">
+      <span class="section-title">Transferts récents</span>
+      <span class="section-kanji">最近の転送</span>
+    </div>
+    <div class="transfers-grid" id="transfersGrid">
+      <div class="empty-state">
+        <div class="empty-kanji">空</div>
+        <div class="empty-text">Aucun transfert pour le moment</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">TOY<span>O</span></div>
+    <div class="footer-text">Team Créa · Partage interne © 2025</div>
+  </footer>
+
+  <!-- SUCCESS MODAL -->
+  <div class="success-overlay" id="successOverlay">
+    <div class="success-card">
+      <button class="close-success" id="closeSuccessBtn">✕</button>
+      <div class="success-kanji">豊</div>
+      <div class="success-title">Transfert prêt !</div>
+      <div class="success-sub" id="successSub">Ton lien de téléchargement est généré. Partage-le ou copie-le ci-dessous.</div>
+      <div class="link-box" id="linkBox">
+        <div class="link-url" id="linkUrl">toyo-transfer.link/xxxx</div>
+        <div class="copy-btn-icon">Copier</div>
+      </div>
+      <div class="copy-success" id="copySuccess">✓ Lien copié dans le presse-papiers</div>
+      <div class="success-actions">
+        <button class="btn-outline" id="downloadAllBtn">⬇ Télécharger</button>
+        <button class="btn-red" id="newTransferBtn">Nouveau transfert</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
