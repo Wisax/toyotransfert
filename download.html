@@ -15,7 +15,7 @@
   .from{color:#888;font-size:.9rem;margin-bottom:.3rem}
   .msg{background:#1a1a1a;border-radius:8px;padding:1rem;margin:1rem 0;font-size:.9rem;color:#c8b8a2;font-style:italic}
   .files{display:flex;flex-direction:column;gap:.6rem;margin-top:1.5rem}
-  .file-row{display:flex;justify-content:space-between;align-items:center;background:#1a1a1a;border:1px solid #222;border-radius:10px;padding:.9rem 1.2rem;text-decoration:none;color:#f0ede8;transition:border-color .2s;cursor:pointer}
+  .file-row{display:flex;justify-content:space-between;align-items:center;background:#1a1a1a;border:1px solid #222;border-radius:10px;padding:.9rem 1.2rem;text-decoration:none;color:#f0ede8;transition:border-color .2s}
   .file-row:hover{border-color:#c8b8a2}
   .fname{font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%}
   .dl{font-size:.8rem;color:#c8b8a2;white-space:nowrap}
@@ -58,48 +58,55 @@ async function init() {
     return;
   }
 
-  // Lister les fichiers du dossier
-  const res = await fetch(
-    `${SUPABASE_URL}/storage/v1/object/list/${BUCKET}/${code}`,
-    {
+  try {
+    // POST /object/list/BUCKET avec prefix = "code/" dans le body
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/list/${BUCKET}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${ANON_KEY}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ limit: 100, offset: 0, prefix: '' })
+      body: JSON.stringify({
+        limit: 100,
+        offset: 0,
+        prefix: `${code}/`
+      })
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.error('Supabase list error:', res.status, errText);
+      showError('Impossible de charger les fichiers. Lien peut-être expiré.');
+      return;
     }
-  );
 
-  if (!res.ok) {
-    showError('Impossible de charger les fichiers. Lien peut-être expiré.');
-    return;
+    const files = await res.json();
+    console.log('Supabase files:', files);
+
+    // Filtrer index.html et garder seulement les vrais fichiers (avec metadata)
+    const realFiles = (Array.isArray(files) ? files : [])
+      .filter(f => f.name && f.name !== 'index.html' && f.metadata);
+
+    if (!realFiles.length) {
+      showError('Aucun fichier trouvé pour ce transfert.');
+      return;
+    }
+
+    const fileUrls = realFiles.map(f => ({
+      name: f.name,
+      url : `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${code}/${f.name}`
+    }));
+
+    renderFiles(sender, msg, fileUrls);
+    autoDownload(fileUrls);
+
+  } catch (e) {
+    console.error(e);
+    showError('Erreur réseau. Réessaie plus tard.');
   }
-
-  const files = await res.json();
-
-  // Filtrer index.html si présent (ancien système)
-  const realFiles = files.filter(f => f.name !== 'index.html');
-
-  if (!realFiles.length) {
-    showError('Aucun fichier trouvé pour ce transfert.');
-    return;
-  }
-
-  // Construire les URLs
-  const fileUrls = realFiles.map(f => ({
-    name: f.name,
-    url : `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${code}/${f.name}`
-  }));
-
-  // Afficher la page
-  renderFiles(code, sender, msg, fileUrls);
-
-  // Auto-téléchargement avec délai entre chaque fichier
-  autoDownload(fileUrls);
 }
 
-function renderFiles(code, sender, msg, fileUrls) {
+function renderFiles(sender, msg, fileUrls) {
   const filesHtml = fileUrls.map(f => `
     <a class="file-row" href="${f.url}" download="${escapeHtml(f.name)}">
       <span class="fname">${escapeHtml(f.name)}</span>
@@ -117,26 +124,25 @@ function renderFiles(code, sender, msg, fileUrls) {
 }
 
 function autoDownload(fileUrls) {
-  // Lance le téléchargement automatique de chaque fichier
   fileUrls.forEach((f, i) => {
     setTimeout(() => {
       const a = document.createElement('a');
-      a.href     = f.url;
+      a.href = f.url;
       a.download = f.name;
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-    }, i * 800); // 800ms entre chaque pour éviter le blocage navigateur
+    }, i * 800);
   });
 }
 
 function downloadAll() {
-  const links = document.querySelectorAll('.file-row');
-  links.forEach((a, i) => {
+  const rows = document.querySelectorAll('.file-row');
+  rows.forEach((a, i) => {
     setTimeout(() => {
       const dl = document.createElement('a');
-      dl.href     = a.href;
+      dl.href = a.href;
       dl.download = a.querySelector('.fname').textContent;
       dl.style.display = 'none';
       document.body.appendChild(dl);
